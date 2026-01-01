@@ -1,0 +1,615 @@
+const express = require('express');
+const bodyParser = require('body-parser');
+const session = require('express-session');
+const fs = require('fs');
+const path = require('path');
+const crypto = require('crypto');
+const MarkdownIt = require('markdown-it');
+const md = new MarkdownIt();
+const multer = require('multer');
+const speakeasy = require('speakeasy');
+const QRCode = require('qrcode');
+
+const app = express();
+
+// Port configuration: Command line arg (--port=XXXX) or environment variable (PORT) or default 3001
+const getPort = () => {
+    // Check command line arguments like --port=4000
+    const portArg = process.argv.find(arg => arg.startsWith('--port='));
+    if (portArg) {
+        return parseInt(portArg.split('=')[1]);
+    }
+    // Check simple command line argument like: node server.js 4000
+    const simpleArg = process.argv[2];
+    if (simpleArg && !isNaN(simpleArg)) {
+        return parseInt(simpleArg);
+    }
+    // Fallback to ENV or default
+    return process.env.PORT || 3001;
+};
+
+const PORT = getPort();
+
+// Configure Multer for Image Upload
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        const dir = path.join(__dirname, 'public/images');
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+        cb(null, dir);
+    },
+    filename: function (req, file, cb) {
+        // Use a constant name to overwrite previous custom QR, but keep extension
+        const ext = path.extname(file.originalname);
+        cb(null, 'qr-custom' + ext);
+    }
+});
+const upload = multer({ storage: storage });
+
+// Middleware
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
+app.use(express.static('public'));
+app.set('view engine', 'ejs');
+app.use(session({
+    secret: 'my-secret-key-123',
+    resave: false,
+    saveUninitialized: true
+}));
+
+// Helper: Read JSON
+const readJson = (filePath) => {
+    try {
+        if (!fs.existsSync(filePath)) return [];
+        let data = fs.readFileSync(filePath, 'utf8');
+        // Strip BOM if present
+        if (data.charCodeAt(0) === 0xFEFF) {
+            data = data.slice(1);
+        }
+        return JSON.parse(data);
+    } catch (err) {
+        console.error('Error reading JSON:', err);
+        return [];
+    }
+};
+
+// Helper: Write JSON
+const writeJson = (filePath, data) => {
+    fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
+};
+
+// Paths
+const DATA_DIR = path.join(__dirname, 'data');
+const SETTINGS_FILE = path.join(DATA_DIR, 'settings.json');
+const ARTICLES_META_FILE = path.join(DATA_DIR, 'articles', 'metadata.json');
+const CONTENT_DIR = path.join(DATA_DIR, 'content');
+const KEYS_FILE = path.join(DATA_DIR, 'keys.json');
+const ABOUT_FILE = path.join(DATA_DIR, 'about.md');
+
+// Helper: Generate Random Key
+const generateKey = () => {
+    return 'KM' + Math.random().toString(36).substr(2, 9).toUpperCase();
+};
+
+// Middleware: Auth Check
+const requireAuth = (req, res, next) => {
+    if (req.session && req.session.isAdmin) {
+        return next();
+    } else {
+        return res.redirect('/login');
+    }
+};
+
+// Ensure directories exist
+if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR);
+
+// Routes Placeholder
+app.get('/', (req, res) => {
+    const settings = readJson(SETTINGS_FILE);
+    const allArticles = readJson(ARTICLES_META_FILE);
+    const articles = allArticles.filter(a => !a.hidden);
+    
+    // Pagination Logic
+    let page = parseInt(req.query.page) || 1;
+    let limit = parseInt(req.query.limit) || 10;
+    
+    // Validate params
+    if (limit < 5) limit = 5;
+    if (limit > 50) limit = 50;
+    if (page < 1) page = 1;
+    
+    const total = articles.length;
+    const totalPages = Math.ceil(total / limit);
+    
+    // Adjust page if out of bounds
+    if (page > totalPages && total > 0) page = totalPages;
+    
+    const startIndex = (page - 1) * limit;
+    const paginatedArticles = articles.slice(startIndex, startIndex + limit);
+
+    // Get Hot Articles (Top 10 by views) - only visible ones
+    const hotArticles = [...articles]
+        .map(a => ({ ...a, views: a.views || 0 })) // Ensure views exists
+        .sort((a, b) => b.views - a.views)
+        .slice(0, 10);
+
+    res.render('index', { 
+        articles: paginatedArticles, 
+        settings, 
+        hotArticles,
+        pagination: {
+            page,
+            limit,
+            total,
+            totalPages
+        }
+    });
+});
+
+// Article Detail
+app.get('/article/:id', (req, res) => {
+    const articles = readJson(ARTICLES_META_FILE);
+    const article = articles.find(a => a.id === req.params.id);
+    const settings = readJson(SETTINGS_FILE);
+
+    if (!article || article.hidden) return res.status(404).send('Article not found');
+    
+    // Increment views
+    article.views = (article.views || 0) + 1;
+    writeJson(ARTICLES_META_FILE, articles);
+    
+    // Check Lock Status
+    // Default to locked unless globally disabled or user has valid key
+    let isLocked = true;
+    let htmlContent = '';
+    
+    // If verification disabled globally
+    if (settings.enable_key_verification === false) {
+        isLocked = false;
+    } 
+    // Or if user already unlocked this article
+    else if (req.headers.cookie && req.headers.cookie.includes(`unlocked_${article.id}=true`)) {
+        isLocked = false;
+    }
+
+    if (!isLocked) {
+        try {
+            const contentMd = fs.readFileSync(path.join(CONTENT_DIR, article.id + '.md'), 'utf8');
+            htmlContent = md.render(contentMd);
+        } catch (e) {
+            htmlContent = '<p>内容读取失败</p>';
+        }
+    }
+
+    res.render('article', { article, settings, isLocked, htmlContent });
+});
+
+// About Page
+app.get('/about', (req, res) => {
+    const settings = readJson(SETTINGS_FILE);
+    let content = '';
+    if (fs.existsSync(ABOUT_FILE)) {
+        content = fs.readFileSync(ABOUT_FILE, 'utf8');
+    }
+    const htmlContent = md.render(content);
+    res.render('about', { settings, content: htmlContent });
+});
+
+// Admin - Edit About
+app.get('/admin/about', requireAuth, (req, res) => {
+    const settings = readJson(SETTINGS_FILE);
+    let content = '';
+    if (fs.existsSync(ABOUT_FILE)) {
+        content = fs.readFileSync(ABOUT_FILE, 'utf8');
+    }
+    res.render('about_editor', { settings, content });
+});
+
+// Admin - Save About
+app.post('/admin/about/save', requireAuth, (req, res) => {
+    const content = req.body.content;
+    fs.writeFileSync(ABOUT_FILE, content, 'utf8');
+    res.redirect('/admin');
+});
+
+// Unlock API
+app.post('/api/unlock', (req, res) => {
+    const { article_id, key } = req.body;
+    const keys = readJson(path.join(DATA_DIR, 'keys.json'));
+    const keyData = keys.find(k => k.code === key);
+    
+    if (!keyData) {
+        return res.json({ success: false, message: '无效的卡密' });
+    }
+    
+    const now = new Date();
+    
+    // Status Check
+    if (keyData.status === 'expired') {
+        return res.json({ success: false, message: '卡密已过期' });
+    }
+    
+    if (keyData.status === 'active') {
+        // Check Binding
+        if (keyData.bound_article_id !== article_id) {
+            return res.json({ success: false, message: '此卡密已绑定其他文章，请使用新卡密' });
+        }
+        // Check Expiration
+        if (keyData.expire_time && new Date(keyData.expire_time) < now) {
+            keyData.status = 'expired';
+            writeJson(path.join(DATA_DIR, 'keys.json'), keys);
+            return res.json({ success: false, message: '卡密已过期' });
+        }
+    }
+    
+    if (keyData.status === 'unused') {
+        // Activate
+        keyData.status = 'active';
+        keyData.bound_article_id = article_id;
+        keyData.activate_time = now.toISOString();
+        
+        if (keyData.duration_hours === -1) {
+            keyData.expire_time = null;
+        } else {
+            const durationMs = (keyData.duration_hours || 24) * 60 * 60 * 1000;
+            keyData.expire_time = new Date(now.getTime() + durationMs).toISOString();
+        }
+        writeJson(path.join(DATA_DIR, 'keys.json'), keys);
+    }
+    
+    // Auth Success: Read Content
+    try {
+        const contentMd = fs.readFileSync(path.join(CONTENT_DIR, article_id + '.md'), 'utf8');
+        const contentHtml = md.render(contentMd);
+        return res.json({ success: true, content: contentHtml });
+    } catch (e) {
+        return res.json({ success: false, message: '文章内容读取失败' });
+    }
+});
+
+// --- ADMIN ROUTES ---
+
+// Login Page
+app.get('/login', (req, res) => {
+    res.render('login', { error: null, settings: readJson(SETTINGS_FILE) });
+});
+
+// Login Action
+app.post('/login', (req, res) => {
+    const { password, token } = req.body;
+    const settings = readJson(SETTINGS_FILE);
+    
+    // Hash both input and stored password for comparison (Timing Attack protection)
+    const inputHash = crypto.createHash('sha256').update(password || '').digest('hex');
+    const storedHash = crypto.createHash('sha256').update(settings.admin_password || '').digest('hex');
+
+    if (inputHash === storedHash) {
+        // Password Correct
+        if (settings.two_fa_enabled) {
+            if (!token) {
+                // Step 2 Required
+                return res.render('login-2fa', { password, error: null, settings });
+            } else {
+                // Verify 2FA
+                const verified = speakeasy.totp.verify({
+                    secret: settings.two_fa_secret,
+                    encoding: 'base32',
+                    token: token
+                });
+                if (verified) {
+                    req.session.isAdmin = true;
+                    return res.redirect('/admin');
+                } else {
+                    return res.render('login-2fa', { password, error: '验证码错误', settings });
+                }
+            }
+        } else {
+            // Login Success (No 2FA)
+            req.session.isAdmin = true;
+            res.redirect('/admin');
+        }
+    } else {
+        res.render('login', { error: '密码错误', settings });
+    }
+});
+
+// Logout
+app.get('/logout', (req, res) => {
+    req.session.destroy();
+    res.redirect('/');
+});
+
+// Admin Dashboard
+app.get('/admin', requireAuth, (req, res) => {
+    const settings = readJson(SETTINGS_FILE);
+    const articles = readJson(ARTICLES_META_FILE);
+    const keys = readJson(path.join(DATA_DIR, 'keys.json'));
+
+    // Sort Logic (Articles)
+    const sort = req.query.sort || 'date_desc';
+    
+    articles.sort((a, b) => {
+        if (sort === 'date_asc') return (a.date || '').localeCompare(b.date || '');
+        if (sort === 'date_desc') return (b.date || '').localeCompare(a.date || '');
+        if (sort === 'views_asc') return (a.views || 0) - (b.views || 0);
+        if (sort === 'views_desc') return (b.views || 0) - (a.views || 0);
+        return 0;
+    });
+
+    // Sort Logic (Keys)
+    const keySort = req.query.keySort || 'status_asc';
+    
+    keys.sort((a, b) => {
+        if (keySort === 'status_asc') return a.status.localeCompare(b.status);
+        if (keySort === 'status_desc') return b.status.localeCompare(a.status);
+        
+        // Treat -1 as Infinity for duration sorting
+        const getDuration = (d) => d === -1 ? Infinity : d;
+        if (keySort === 'duration_asc') return getDuration(a.duration_hours) - getDuration(b.duration_hours);
+        if (keySort === 'duration_desc') return getDuration(b.duration_hours) - getDuration(a.duration_hours);
+        
+        if (keySort === 'time_asc') return new Date(a.create_time || 0) - new Date(b.create_time || 0);
+        if (keySort === 'time_desc') return new Date(b.create_time || 0) - new Date(a.create_time || 0);
+        
+        return 0;
+    });
+
+    const activeSection = req.query.section || (req.query.sort || req.query.articlePage ? 'articles' : (req.query.keySort ? 'keys' : 'dashboard'));
+
+    // Article Pagination Logic
+    let articlePage = parseInt(req.query.articlePage) || 1;
+    let articleLimit = parseInt(req.query.articleLimit) || 10;
+    if (articleLimit < 1) articleLimit = 10;
+    if (articlePage < 1) articlePage = 1;
+
+    const articleTotal = articles.length;
+    const articleTotalPages = Math.ceil(articleTotal / articleLimit);
+    if (articlePage > articleTotalPages && articleTotal > 0) articlePage = articleTotalPages;
+
+    const articleStartIndex = (articlePage - 1) * articleLimit;
+    const paginatedArticles = articles.slice(articleStartIndex, articleStartIndex + articleLimit);
+
+    // Key Pagination Logic
+    let keyPage = parseInt(req.query.keyPage) || 1;
+    let keyLimit = parseInt(req.query.keyLimit) || 5;
+    if (keyLimit < 1) keyLimit = 5;
+    if (keyPage < 1) keyPage = 1;
+
+    const keyTotal = keys.length;
+    const keyTotalPages = Math.ceil(keyTotal / keyLimit);
+    if (keyPage > keyTotalPages && keyTotal > 0) keyPage = keyTotalPages;
+
+    const keyStartIndex = (keyPage - 1) * keyLimit;
+    const paginatedKeys = keys.slice(keyStartIndex, keyStartIndex + keyLimit);
+
+    res.render('admin', { 
+        articles: paginatedArticles, 
+        allArticles: articles,
+        keys: paginatedKeys, 
+        settings, 
+        currentSort: sort, 
+        currentKeySort: keySort, 
+        activeSection,
+        articlePagination: {
+            page: articlePage,
+            limit: articleLimit,
+            total: articleTotal,
+            totalPages: articleTotalPages
+        },
+        keyPagination: {
+            page: keyPage,
+            limit: keyLimit,
+            total: keyTotal,
+            totalPages: keyTotalPages
+        }
+    });
+});
+
+// Settings Update
+app.post('/admin/settings', requireAuth, upload.single('qr_image'), (req, res) => {
+    const settings = readJson(SETTINGS_FILE);
+    
+    settings.site_name = req.body.site_name;
+    if (req.body.admin_password) settings.admin_password = req.body.admin_password;
+    settings.popup_title = req.body.popup_title;
+    settings.watermark_text = req.body.watermark_text;
+    settings.default_key_duration_hours = parseInt(req.body.default_key_duration_hours) || 24;
+    
+    // Toggle
+    settings.enable_key_verification = req.body.enable_key_verification === 'on';
+
+    // Handle File Upload
+    if (req.file) {
+        // Add timestamp to force browser cache refresh
+        settings.wechat_qr_image = '/images/' + req.file.filename + '?v=' + Date.now();
+    }
+    
+    writeJson(SETTINGS_FILE, settings);
+    res.redirect('/admin');
+});
+
+// 2FA Routes
+app.get('/admin/2fa/setup', requireAuth, (req, res) => {
+    const secret = speakeasy.generateSecret({ name: "MyBlog Admin" });
+    QRCode.toDataURL(secret.otpauth_url, (err, data_url) => {
+        res.json({ secret: secret.base32, qr_code: data_url });
+    });
+});
+
+app.post('/admin/2fa/verify', requireAuth, (req, res) => {
+    const { token, secret } = req.body;
+    const verified = speakeasy.totp.verify({
+        secret: secret,
+        encoding: 'base32',
+        token: token
+    });
+    
+    if (verified) {
+        const settings = readJson(SETTINGS_FILE);
+        settings.two_fa_secret = secret;
+        settings.two_fa_enabled = true;
+        writeJson(SETTINGS_FILE, settings);
+        res.json({ success: true });
+    } else {
+        res.json({ success: false, message: '验证码错误' });
+    }
+});
+
+app.post('/admin/2fa/disable', requireAuth, (req, res) => {
+    const settings = readJson(SETTINGS_FILE);
+    settings.two_fa_enabled = false;
+    delete settings.two_fa_secret;
+    writeJson(SETTINGS_FILE, settings);
+    res.redirect('/admin');
+});
+
+// Key Generation
+app.post('/admin/keys/generate', requireAuth, (req, res) => {
+    const keys = readJson(path.join(DATA_DIR, 'keys.json'));
+    let duration = parseInt(req.body.duration);
+    if (isNaN(duration)) duration = -1; // Default to infinite
+    const count = parseInt(req.body.count) || 1;
+    
+    for (let i = 0; i < count; i++) {
+        const newKey = {
+            code: generateKey(),
+            status: 'unused',
+            bound_article_id: null,
+            create_time: new Date().toISOString(),
+            activate_time: null,
+            expire_time: null,
+            duration_hours: duration
+        };
+        keys.unshift(newKey); // Add to top
+    }
+    
+    writeJson(path.join(DATA_DIR, 'keys.json'), keys);
+    res.redirect('/admin?section=keys');
+});
+
+// Delete Key
+app.get('/admin/keys/delete/:code', requireAuth, (req, res) => {
+    let keys = readJson(KEYS_FILE);
+    const keyToDelete = keys.find(k => k.code === req.params.code);
+    
+    if (!keyToDelete) {
+        return res.json({ success: false, message: '卡密不存在' });
+    }
+    
+    if (keyToDelete.status !== 'unused') {
+        return res.json({ success: false, message: '已使用的卡密无法删除' });
+    }
+    
+    keys = keys.filter(k => k.code !== req.params.code);
+    writeJson(KEYS_FILE, keys);
+    res.json({ success: true });
+});
+
+// --- ARTICLE MANAGEMENT ---
+
+// New Article Page
+app.get('/admin/article/new', requireAuth, (req, res) => {
+    const settings = readJson(SETTINGS_FILE);
+    res.render('editor', { settings, article: {}, content: '' });
+});
+
+// Edit Article Page
+app.get('/admin/article/edit/:id', requireAuth, (req, res) => {
+    const settings = readJson(SETTINGS_FILE);
+    const articles = readJson(ARTICLES_META_FILE);
+    const article = articles.find(a => a.id === req.params.id);
+    
+    if (!article) return res.redirect('/admin');
+    
+    let content = '';
+    try {
+        content = fs.readFileSync(path.join(CONTENT_DIR, article.id + '.md'), 'utf8');
+    } catch (e) { content = ''; }
+    
+    res.render('editor', { settings, article, content });
+});
+
+// Save Article
+app.post('/admin/article/save', requireAuth, (req, res) => {
+    const { id, title, summary, content, hidden } = req.body;
+    let articles = readJson(ARTICLES_META_FILE);
+    let articleId = id;
+    const isHidden = hidden === 'on';
+    
+    if (!articleId) {
+        // Create new
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const hour = String(now.getHours()).padStart(2, '0');
+        const minute = String(now.getMinutes()).padStart(2, '0');
+        const second = String(now.getSeconds()).padStart(2, '0');
+        
+        articleId = `post-${year}${month}${day}-${hour}${minute}${second}-${Math.random().toString(36).substr(2, 4)}`;
+        
+        const newArticle = {
+            id: articleId,
+            title,
+            summary,
+            date: now.toISOString().split('T')[0],
+            hidden: isHidden
+        };
+        articles.unshift(newArticle);
+    } else {
+        // Update existing
+        const index = articles.findIndex(a => a.id === articleId);
+        if (index !== -1) {
+            articles[index].title = title;
+            articles[index].summary = summary;
+            articles[index].hidden = isHidden;
+        }
+    }
+    
+    // Save Metadata
+    writeJson(ARTICLES_META_FILE, articles);
+    
+    // Save Content
+    fs.writeFileSync(path.join(CONTENT_DIR, articleId + '.md'), content, 'utf8');
+    
+    res.redirect('/admin');
+});
+
+// Toggle Article Visibility
+app.get('/admin/article/toggle-visibility/:id', requireAuth, (req, res) => {
+    const articleId = req.params.id;
+    let articles = readJson(ARTICLES_META_FILE);
+    const article = articles.find(a => a.id === articleId);
+    
+    if (article) {
+        article.hidden = !article.hidden;
+        writeJson(ARTICLES_META_FILE, articles);
+        res.json({ success: true, hidden: article.hidden });
+    } else {
+        res.status(404).json({ success: false, message: '文章不存在' });
+    }
+});
+
+// Delete Article
+app.get('/admin/article/delete/:id', requireAuth, (req, res) => {
+    const articleId = req.params.id;
+    let articles = readJson(ARTICLES_META_FILE);
+    
+    // Remove from metadata
+    articles = articles.filter(a => a.id !== articleId);
+    writeJson(ARTICLES_META_FILE, articles);
+    
+    // Remove content file
+    try {
+        fs.unlinkSync(path.join(CONTENT_DIR, articleId + '.md'));
+    } catch (e) { console.error('Error deleting file:', e); }
+    
+    // Redirect back with section and pagination info if available
+    const page = req.query.page || 1;
+    const limit = req.query.limit || 10;
+    const sort = req.query.sort || 'date_desc';
+    res.redirect(`/admin?section=articles&articlePage=${page}&articleLimit=${limit}&sort=${sort}`);
+});
+
+app.listen(PORT, () => {
+    console.log('Server running at http://localhost:' + PORT);
+});

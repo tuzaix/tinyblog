@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>关于 - <%= settings.site_name %></title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+
+    <!-- Header -->
+    <header class="site-header">
+        <div class="header-inner">
+            <a href="/" class="logo"><%= settings.site_name %></a>
+            <div class="nav-menu">
+                <a href="/" class="nav-item">首页</a>
+                <a href="/about" class="nav-item" style="color: var(--primary-color);">关于</a>
+                <a href="#" class="nav-item" onclick="openContactModal(); return false;">联系客服</a>
+                <select id="theme-select" class="theme-select" onchange="changeTheme(this.value)">
+                    <option value="light">☀️ 浅色</option>
+                    <option value="dark">🌙 深色</option>
+                    <option value="sepia">📖 护眼</option>
+                </select>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <div class="main-container" style="display: block; max-width: 800px;">
+        
+        <article class="article-container" style="padding: 60px;">
+            <header class="article-header">
+                <h1 class="article-h1">关于本站</h1>
+            </header>
+
+            <div class="markdown-body">
+                <%- content %>
+            </div>
+        </article>
+
+    </div>
+
+    <!-- Footer -->
+    <footer class="site-footer">
+        <p>&copy; <%= new Date().getFullYear() %> <%= settings.site_name %>. All Rights Reserved.</p>
+    </footer>
+
+    <!-- Contact Modal -->
+    <div class="modal-overlay" id="contact-modal" style="display: none;">
+        <div class="modal">
+            <button class="modal-close" onclick="closeContactModal()"><i class="fas fa-times"></i></button>
+            <h3>联系客服</h3>
+            <p>扫描下方二维码添加客服微信</p>
+            <img src="<%= settings.wechat_qr_image %>" alt="QR Code">
+            <p style="font-size: 0.9rem; margin-top: 15px;">获取最新文章卡密 / 商务合作</p>
+        </div>
+    </div>
+
+    <script>
+        // Contact Modal Logic
+        function openContactModal() {
+            document.getElementById('contact-modal').style.display = 'flex';
+        }
+        function closeContactModal() {
+            document.getElementById('contact-modal').style.display = 'none';
+        }
+        document.getElementById('contact-modal').addEventListener('click', function(e) {
+            if (e.target === this) closeContactModal();
+        });
+
+        // Theme Logic
+        const savedTheme = localStorage.getItem('theme') || '<%= settings.default_theme || "light" %>';
+        document.body.setAttribute('data-theme', savedTheme);
+        document.getElementById('theme-select').value = savedTheme;
+
+        function changeTheme(theme) {
+            document.body.setAttribute('data-theme', theme);
+            localStorage.setItem('theme', theme);
+        }
+    </script>
+</body>
+</html>

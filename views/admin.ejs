@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>后台管理 - <%= settings.site_name %></title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body>
+
+<div class="admin-wrapper">
+    <!-- Sidebar -->
+    <aside class="admin-sidebar">
+        <div class="sidebar-header">
+            <i class="fas fa-shield-alt" style="margin-right: 10px;"></i> 管理中心
+        </div>
+        <nav class="sidebar-menu">
+            <button class="nav-item active" onclick="showSection('dashboard', this)">
+                <i class="fas fa-tachometer-alt"></i> 仪表盘
+            </button>
+            <button class="nav-item" onclick="showSection('articles', this)">
+                <i class="fas fa-file-alt"></i> 文章管理
+            </button>
+            <button class="nav-item" onclick="showSection('keys', this)">
+                <i class="fas fa-key"></i> 卡密管理
+            </button>
+            <a href="/admin/about" class="nav-item">
+                <i class="fas fa-info-circle"></i> 关于页面
+            </a>
+            <button class="nav-item" onclick="showSection('settings', this)">
+                <i class="fas fa-cog"></i> 系统设置
+            </button>
+        </nav>
+        <div class="sidebar-footer">
+            <a href="/" target="_blank" class="nav-item">
+                <i class="fas fa-external-link-alt"></i> 访问前台
+            </a>
+            <a href="/logout" class="nav-item" style="color: #e74c3c;">
+                <i class="fas fa-sign-out-alt"></i> 退出登录
+            </a>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="admin-main">
+        <!-- Top Header -->
+        <header class="top-header">
+            <div class="page-title" id="page-title">仪表盘</div>
+            <div class="user-actions">
+                <span>管理员</span>
+                <img src="https://ui-avatars.com/api/?name=Admin&background=0D8ABC&color=fff&rounded=true" width="32" height="32" alt="Avatar" style="border-radius: 50%;">
+            </div>
+        </header>
+
+        <div class="content-scroll">
+            
+            <!-- Dashboard Section -->
+            <div id="section-dashboard" class="section-container active">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon blue"><i class="fas fa-file-alt"></i></div>
+                        <div class="stat-info">
+                            <h4>文章总数</h4>
+                            <div class="value"><%= allArticles.length %></div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon green"><i class="fas fa-eye"></i></div>
+                        <div class="stat-info">
+                            <h4>总阅读量</h4>
+                            <div class="value"><%= allArticles.reduce((sum, a) => sum + (a.views || 0), 0) %></div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon orange"><i class="fas fa-key"></i></div>
+                        <div class="stat-info">
+                            <h4>有效卡密</h4>
+                            <div class="value"><%= keys.filter(k => k.status === 'unused').length %></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">最新文章</h3>
+                    </div>
+                    <table>
+                        <thead>
+                            <tr><th>序号</th><th>标题</th><th>发布日期</th><th>阅读量</th></tr>
+                        </thead>
+                        <tbody>
+                            <% allArticles.slice(0, 5).forEach(function(article, index) { %>
+                                <tr>
+                                    <td style="color: #999;"><%= index + 1 %></td>
+                                    <td>
+                                        <%= article.title %>
+                                        <% if (article.hidden) { %>
+                                            <span class="badge badge-warning" style="font-size: 0.7em; margin-left: 5px;">隐藏</span>
+                                        <% } %>
+                                    </td>
+                                    <td><%= article.date %></td>
+                                    <td><%= article.views || 0 %></td>
+                                </tr>
+                            <% }); %>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Articles Section -->
+            <div id="section-articles" class="section-container">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">文章列表</h3>
+                        <a href="/admin/article/new" class="btn btn-primary"><i class="fas fa-plus"></i> 新建文章</a>
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="width: 60px;">序号</th>
+                                <th>标题</th>
+                                <th>
+                                    <a href="/admin?sort=<%= currentSort === 'date_asc' ? 'date_desc' : 'date_asc' %>&section=articles" class="sort-header">
+                                        日期 
+                                        <i class="fas <%= currentSort === 'date_asc' ? 'fa-sort-up' : (currentSort === 'date_desc' ? 'fa-sort-down' : 'fa-sort') %>"></i>
+                                    </a>
+                                </th>
+                                <th>ID</th>
+                                <th>
+                                    <a href="/admin?sort=<%= currentSort === 'views_asc' ? 'views_desc' : 'views_asc' %>&section=articles" class="sort-header">
+                                        阅读量 
+                                        <i class="fas <%= currentSort === 'views_asc' ? 'fa-sort-up' : (currentSort === 'views_desc' ? 'fa-sort-down' : 'fa-sort') %>"></i>
+                                    </a>
+                                </th>
+                                <th>状态</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% articles.forEach(function(article, index) { %>
+                                <tr id="article-row-<%= article.id %>">
+                                    <td style="color: #999;"><%= (articlePagination.page - 1) * articlePagination.limit + index + 1 %></td>
+                                    <td><%= article.title %></td>
+                                    <td><%= article.date %></td>
+                                    <td style="color: #999; font-size: 0.85em;"><%= article.id %></td>
+                                    <td><%= article.views || 0 %></td>
+                                    <td>
+                                        <% if (article.hidden) { %>
+                                            <span class="badge badge-warning" id="status-<%= article.id %>"><i class="fas fa-eye-slash"></i> 已隐藏</span>
+                                        <% } else { %>
+                                            <span class="badge badge-success" id="status-<%= article.id %>"><i class="fas fa-eye"></i> 显示中</span>
+                                        <% } %>
+                                    </td>
+                                    <td>
+                                        <button onclick="toggleArticleVisibility('<%= article.id %>')" class="btn btn-sm btn-secondary" id="btn-toggle-<%= article.id %>">
+                                            <% if (article.hidden) { %>
+                                                <i class="fas fa-eye"></i> 显示
+                                            <% } else { %>
+                                                <i class="fas fa-eye-slash"></i> 隐藏
+                                            <% } %>
+                                        </button>
+                                        <a href="/admin/article/edit/<%= article.id %>" class="btn btn-sm btn-primary"><i class="fas fa-edit"></i> 编辑</a>
+                                        <a href="/admin/article/delete/<%= article.id %>?page=<%= articlePagination.page %>&limit=<%= articlePagination.limit %>&sort=<%= currentSort %>" class="btn btn-sm btn-danger" onclick="return confirm('确定要删除吗？')"><i class="fas fa-trash"></i> 删除</a>
+                                    </td>
+                                </tr>
+                            <% }); %>
+                        </tbody>
+                    </table>
+
+                    <!-- Article Pagination -->
+                    <div class="pagination-container" style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px; padding: 15px 10px; border-top: 1px solid #eee;">
+                        <div class="pagination-info" style="color: #666; font-size: 0.9em;">
+                            共 <%= articlePagination.total %> 条记录，当前第 <%= articlePagination.page %> / <%= articlePagination.totalPages %> 页
+                        </div>
+                        
+                        <div style="display: flex; align-items: center; gap: 20px;">
+                            <div class="page-size-selector" style="display: flex; align-items: center; gap: 8px;">
+                                <span style="font-size: 0.9em; color: #666;">每页显示:</span>
+                                <select onchange="window.location.href='/admin?section=articles&articlePage=1&articleLimit=' + this.value + '&sort=<%= currentSort %>'" style="padding: 4px 8px; border-radius: 4px; border: 1px solid #ddd; cursor: pointer;">
+                                    <% [5, 10, 20, 50, 100].forEach(limit => { %>
+                                        <option value="<%= limit %>" <%= articlePagination.limit == limit ? 'selected' : '' %>><%= limit %></option>
+                                    <% }) %>
+                                </select>
+                            </div>
+
+                            <div class="pagination-buttons" style="display: flex; gap: 5px;">
+                                <% if (articlePagination.page > 1) { %>
+                                    <a href="/admin?section=articles&articlePage=1&articleLimit=<%= articlePagination.limit %>&sort=<%= currentSort %>" class="btn btn-sm btn-secondary" title="首页"><i class="fas fa-angle-double-left"></i></a>
+                                    <a href="/admin?section=articles&articlePage=<%= articlePagination.page - 1 %>&articleLimit=<%= articlePagination.limit %>&sort=<%= currentSort %>" class="btn btn-sm btn-secondary" title="上一页"><i class="fas fa-angle-left"></i></a>
+                                <% } %>
+
+                                <% 
+                                    let apStartPage = Math.max(1, articlePagination.page - 2);
+                                    let apEndPage = Math.min(articlePagination.totalPages, apStartPage + 4);
+                                    if (apEndPage - apStartPage < 4) apStartPage = Math.max(1, apEndPage - 4);
+                                    
+                                    for(let i = apStartPage; i <= apEndPage; i++) { 
+                                %>
+                                    <a href="/admin?section=articles&articlePage=<%= i %>&articleLimit=<%= articlePagination.limit %>&sort=<%= currentSort %>" 
+                                       class="btn btn-sm <%= articlePagination.page == i ? 'btn-primary' : 'btn-secondary' %>">
+                                        <%= i %>
+                                    </a>
+                                <% } %>
+
+                                <% if (articlePagination.page < articlePagination.totalPages) { %>
+                                    <a href="/admin?section=articles&articlePage=<%= articlePagination.page + 1 %>&articleLimit=<%= articlePagination.limit %>&sort=<%= currentSort %>" class="btn btn-sm btn-secondary" title="下一页"><i class="fas fa-angle-right"></i></a>
+                                    <a href="/admin?section=articles&articlePage=<%= articlePagination.totalPages %>&articleLimit=<%= articlePagination.limit %>&sort=<%= currentSort %>" class="btn btn-sm btn-secondary" title="末页"><i class="fas fa-angle-double-right"></i></a>
+                                <% } %>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Keys Section -->
+            <div id="section-keys" class="section-container">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">生成新卡密</h3>
+                    </div>
+                    <form action="/admin/keys/generate" method="POST" style="display: flex; gap: 15px; align-items: flex-end;">
+                        <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                            <label>数量</label>
+                            <input type="number" name="count" value="10" min="1">
+                        </div>
+                        <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                            <label>有效期 (小时, -1为永久)</label>
+                            <input type="number" name="duration" value="<%= settings.default_key_duration_hours || -1 %>" placeholder="-1 为永久">
+                        </div>
+                        <button type="submit" class="btn btn-success" style="height: 42px;"><i class="fas fa-plus-circle"></i> 生成</button>
+                    </form>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">卡密列表</h3>
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="width: 50px;">#</th>
+                                <th>卡密代码</th>
+                                <th>
+                                    <a href="/admin?keySort=<%= currentKeySort === 'status_asc' ? 'status_desc' : 'status_asc' %>&section=keys" class="sort-header" style="color: #666; text-decoration: none; display: flex; align-items: center; gap: 5px;">
+                                        状态
+                                        <i class="fas <%= currentKeySort === 'status_asc' ? 'fa-sort-up' : (currentKeySort === 'status_desc' ? 'fa-sort-down' : 'fa-sort') %>"></i>
+                                    </a>
+                                </th>
+                                <th>
+                                    <a href="/admin?keySort=<%= currentKeySort === 'duration_asc' ? 'duration_desc' : 'duration_asc' %>&section=keys" class="sort-header" style="color: #666; text-decoration: none; display: flex; align-items: center; gap: 5px;">
+                                        有效期
+                                        <i class="fas <%= currentKeySort === 'duration_asc' ? 'fa-sort-up' : (currentKeySort === 'duration_desc' ? 'fa-sort-down' : 'fa-sort') %>"></i>
+                                    </a>
+                                </th>
+                                <th>
+                                    <a href="/admin?keySort=<%= currentKeySort === 'time_asc' ? 'time_desc' : 'time_asc' %>&section=keys" class="sort-header" style="color: #666; text-decoration: none; display: flex; align-items: center; gap: 5px;">
+                                        创建时间
+                                        <i class="fas <%= currentKeySort === 'time_asc' ? 'fa-sort-up' : (currentKeySort === 'time_desc' ? 'fa-sort-down' : 'fa-sort') %>"></i>
+                                    </a>
+                                </th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% keys.forEach(function(key, index) { %>
+                                <tr>
+                                    <td style="color: #999;"><%= (keyPagination.page - 1) * keyPagination.limit + index + 1 %></td>
+                                    <td style="font-family: monospace; font-size: 1.1em;">
+                                        <%= key.code %>
+                                        <button class="btn-icon" onclick="copyToClipboard('<%= key.code %>', this)" title="复制">
+                                            <i class="fas fa-copy"></i>
+                                        </button>
+                                    </td>
+                                    <td>
+                                        <span class="status-badge status-<%= key.status %>">
+                                            <%= key.status === 'unused' ? '未使用' : (key.status === 'active' ? '已激活' : '已过期') %>
+                                        </span>
+                                    </td>
+                                    <td><%= key.duration_hours === -1 ? '永久' : key.duration_hours + 'h' %></td>
+                                    <td><%= new Date(key.create_time).toLocaleString() %></td>
+                                    <td>
+                                        <% if (key.status === 'unused') { %>
+                                            <a href="javascript:void(0)" class="btn btn-sm btn-danger" onclick="deleteKey('<%= key.code %>', this)">
+                                                <i class="fas fa-trash"></i>
+                                            </a>
+                                        <% } else { %>
+                                            <button class="btn btn-sm btn-secondary" disabled title="已使用的卡密无法删除" style="opacity: 0.5; cursor: not-allowed; background: #95a5a6; color: white;">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        <% } %>
+                                    </td>
+                                </tr>
+                            <% }); %>
+                        </tbody>
+                    </table>
+
+                    <!-- Key Pagination -->
+                    <div class="pagination-container" style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px; padding: 15px 10px; border-top: 1px solid #eee;">
+                        <div class="pagination-info" style="color: #666; font-size: 0.9em;">
+                            共 <%= keyPagination.total %> 条记录，当前第 <%= keyPagination.page %> / <%= keyPagination.totalPages %> 页
+                        </div>
+                        
+                        <div style="display: flex; align-items: center; gap: 20px;">
+                            <div class="page-size-selector" style="display: flex; align-items: center; gap: 8px;">
+                                <span style="font-size: 0.9em; color: #666;">每页显示:</span>
+                                <select onchange="window.location.href='/admin?section=keys&keyPage=1&keyLimit=' + this.value + '&keySort=<%= currentKeySort %> '" style="padding: 4px 8px; border-radius: 4px; border: 1px solid #ddd; cursor: pointer;">
+                                    <% [5, 10, 20, 50, 100].forEach(limit => { %>
+                                        <option value="<%= limit %>" <%= keyPagination.limit == limit ? 'selected' : '' %>><%= limit %></option>
+                                    <% }) %>
+                                </select>
+                            </div>
+
+                            <div class="pagination-buttons" style="display: flex; gap: 5px;">
+                                <% if (keyPagination.page > 1) { %>
+                                    <a href="/admin?section=keys&keyPage=1&keyLimit=<%= keyPagination.limit %>&keySort=<%= currentKeySort %>" class="btn btn-sm btn-secondary" title="首页"><i class="fas fa-angle-double-left"></i></a>
+                                    <a href="/admin?section=keys&keyPage=<%= keyPagination.page - 1 %>&keyLimit=<%= keyPagination.limit %>&keySort=<%= currentKeySort %>" class="btn btn-sm btn-secondary" title="上一页"><i class="fas fa-angle-left"></i></a>
+                                <% } %>
+
+                                <% 
+                                    let startPage = Math.max(1, keyPagination.page - 2);
+                                    let endPage = Math.min(keyPagination.totalPages, startPage + 4);
+                                    if (endPage - startPage < 4) startPage = Math.max(1, endPage - 4);
+                                    
+                                    for(let i = startPage; i <= endPage; i++) { 
+                                %>
+                                    <a href="/admin?section=keys&keyPage=<%= i %>&keyLimit=<%= keyPagination.limit %>&keySort=<%= currentKeySort %>" 
+                                       class="btn btn-sm <%= keyPagination.page == i ? 'btn-primary' : 'btn-secondary' %>">
+                                        <%= i %>
+                                    </a>
+                                <% } %>
+
+                                <% if (keyPagination.page < keyPagination.totalPages) { %>
+                                    <a href="/admin?section=keys&keyPage=<%= keyPagination.page + 1 %>&keyLimit=<%= keyPagination.limit %>&keySort=<%= currentKeySort %>" class="btn btn-sm btn-secondary" title="下一页"><i class="fas fa-angle-right"></i></a>
+                                    <a href="/admin?section=keys&keyPage=<%= keyPagination.totalPages %>&keyLimit=<%= keyPagination.limit %>&keySort=<%= currentKeySort %>" class="btn btn-sm btn-secondary" title="末页"><i class="fas fa-angle-double-right"></i></a>
+                                <% } %>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Settings Section -->
+            <div id="section-settings" class="section-container">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">系统配置</h3>
+                    </div>
+                    <form action="/admin/settings" method="POST" enctype="multipart/form-data">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>网站名称</label>
+                                <input type="text" name="site_name" value="<%= settings.site_name %>">
+                            </div>
+                            <div class="form-group">
+                                <label>管理员密码</label>
+                                <input type="text" name="admin_password" value="<%= settings.admin_password || '' %>" placeholder="留空则不修改">
+                            </div>
+                            <div class="form-group">
+                                <label>弹窗标题</label>
+                                <input type="text" name="popup_title" value="<%= settings.popup_title %>">
+                            </div>
+                            <div class="form-group">
+                                <label>默认卡密有效期 (小时)</label>
+                                <input type="number" name="default_key_duration_hours" value="<%= settings.default_key_duration_hours %>">
+                            </div>
+                            <div class="form-group full-width">
+                                <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                                    <input type="checkbox" name="enable_key_verification" <%= settings.enable_key_verification !== false ? 'checked' : '' %> style="width: auto;">
+                                    启用文章卡密验证 (取消勾选则全站免费阅读)
+                                </label>
+                            </div>
+                            <div class="form-group full-width">
+                                <label>水印文字</label>
+                                <input type="text" name="watermark_text" value="<%= settings.watermark_text %>">
+                            </div>
+                            <div class="form-group full-width">
+                                <label>客服二维码</label>
+                                <div style="display: flex; align-items: flex-start; gap: 20px;">
+                                    <img src="<%= settings.wechat_qr_image %>" style="width: 100px; height: 100px; object-fit: cover; border-radius: 8px; border: 1px solid #eee;">
+                                    <div style="flex: 1;">
+                                        <input type="file" name="qr_image" accept="image/*">
+                                        <p style="font-size: 0.85rem; color: #999; margin-top: 5px;">支持 jpg, png, svg 格式。上传后将自动替换旧图片。</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div style="margin-top: 20px; text-align: right;">
+                            <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> 保存设置</button>
+                        </div>
+                    </form>
+
+                    <!-- 2FA Settings -->
+                    <div class="form-group full-width" style="margin-top: 30px; padding-top: 30px; border-top: 1px solid #eee;">
+                        <label style="font-size: 1.1rem; margin-bottom: 15px;">两步验证 (2FA)</label>
+                        
+                        <% if (settings.two_fa_enabled) { %>
+                            <div style="background: #d4edda; color: #155724; padding: 15px; border-radius: 6px; display: flex; align-items: center; justify-content: space-between;">
+                                <div>
+                                    <i class="fas fa-check-circle"></i> 两步验证已开启，您的账户非常安全。
+                                </div>
+                                <button type="button" class="btn btn-danger btn-sm" onclick="disable2FA()">关闭 2FA</button>
+                            </div>
+                        <% } else { %>
+                            <div style="background: #f8f9fa; color: #666; padding: 15px; border-radius: 6px;">
+                                <p style="margin: 0 0 10px 0;">开启两步验证，在登录时需要输入动态验证码，极大提升账户安全性。</p>
+                                <button type="button" class="btn btn-primary" onclick="setup2FA()">开启 2FA</button>
+                            </div>
+                        <% } %>
+
+                        <!-- 2FA Setup Modal -->
+                        <div id="2fa-setup-area" style="display: none; margin-top: 20px; border: 1px solid #ddd; padding: 20px; border-radius: 8px;">
+                            <h4>设置两步验证</h4>
+                            <div style="display: flex; gap: 30px; align-items: flex-start;">
+                                <div style="text-align: center;">
+                                    <img id="2fa-qr" src="" style="width: 150px; height: 150px; border: 1px solid #eee;">
+                                    <p style="font-size: 12px; color: #999;">使用 Google Authenticator 或其他 App 扫描</p>
+                                </div>
+                                <div style="flex: 1;">
+                                    <p>1. 扫描左侧二维码。</p>
+                                    <p>2. 输入 App 生成的 6 位验证码以确认。</p>
+                                    <div style="display: flex; gap: 10px; margin-top: 15px;">
+                                        <input type="text" id="2fa-verify-code" placeholder="6 位验证码" style="width: 150px; text-align: center; letter-spacing: 2px;">
+                                        <button type="button" class="btn btn-success" onclick="verifyAndEnable2FA()">验证并开启</button>
+                                    </div>
+                                    <p id="2fa-msg" style="margin-top: 10px; font-size: 14px;"></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+</div>
+
+<script>
+    function showSection(sectionId, btn) {
+        // Hide all sections
+        document.querySelectorAll('.section-container').forEach(el => el.classList.remove('active'));
+        // Show target section
+        document.getElementById('section-' + sectionId).classList.add('active');
+        
+        // Update Nav
+        if (!btn) {
+            // Find button by onclick attribute if not provided
+            btn = document.querySelector(`button[onclick*="'${sectionId}'"]`);
+        }
+        
+        if (btn) {
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+            btn.classList.add('active');
+            
+            // Update Title
+            const titles = {
+                'dashboard': '仪表盘',
+                'articles': '文章管理',
+                'keys': '卡密管理',
+                'settings': '系统设置'
+            };
+            document.getElementById('page-title').innerText = titles[sectionId];
+        }
+    }
+
+    // Auto-init based on server variable
+    document.addEventListener('DOMContentLoaded', () => {
+        const activeSection = '<%= activeSection %>';
+        if (activeSection) {
+            showSection(activeSection);
+        }
+    });
+
+    function copyToClipboard(text, btn) {
+        navigator.clipboard.writeText(text).then(() => {
+            // Visual feedback
+            const originalHTML = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-check" style="color: #2ecc71;"></i>';
+            setTimeout(() => {
+                btn.innerHTML = originalHTML;
+            }, 2000);
+        }).catch(err => {
+            console.error('Failed to copy: ', err);
+            alert('复制失败，请手动复制');
+        });
+    }
+
+    // 2FA Logic
+    let currentSecret = '';
+
+    function setup2FA() {
+        fetch('/admin/2fa/setup')
+            .then(res => res.json())
+            .then(data => {
+                currentSecret = data.secret;
+                document.getElementById('2fa-qr').src = data.qr_code;
+                document.getElementById('2fa-setup-area').style.display = 'block';
+            });
+    }
+
+    function verifyAndEnable2FA() {
+        const token = document.getElementById('2fa-verify-code').value;
+        if (!token) return;
+
+        fetch('/admin/2fa/verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token, secret: currentSecret })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                alert('2FA 已开启！下次登录将需要验证码。');
+                location.reload();
+            } else {
+                document.getElementById('2fa-msg').style.color = 'red';
+                document.getElementById('2fa-msg').innerText = data.message || '验证失败';
+            }
+        });
+    }
+
+    function disable2FA() {
+        if (confirm('确定要关闭两步验证吗？这将降低账户安全性。')) {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '/admin/2fa/disable';
+            document.body.appendChild(form);
+            form.submit();
+        }
+    }
+
+    function deleteKey(code, btn) {
+        if (!confirm('确定要删除此卡密吗？')) return;
+
+        fetch('/admin/keys/delete/' + code)
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    // Remove row with animation
+                    const row = btn.closest('tr');
+                    row.style.transition = 'opacity 0.3s';
+                    row.style.opacity = '0';
+                    setTimeout(() => row.remove(), 300);
+                } else {
+                    alert('删除失败: ' + (data.message || '未知错误'));
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alert('网络错误');
+            });
+    }
+
+    function toggleArticleVisibility(articleId) {
+        fetch(`/admin/article/toggle-visibility/${articleId}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    const statusSpan = document.getElementById(`status-${articleId}`);
+                    const toggleBtn = document.getElementById(`btn-toggle-${articleId}`);
+                    
+                    if (data.hidden) {
+                        statusSpan.className = 'badge badge-warning';
+                        statusSpan.innerHTML = '<i class="fas fa-eye-slash"></i> 已隐藏';
+                        toggleBtn.innerHTML = '<i class="fas fa-eye"></i> 显示';
+                    } else {
+                        statusSpan.className = 'badge badge-success';
+                        statusSpan.innerHTML = '<i class="fas fa-eye"></i> 显示中';
+                        toggleBtn.innerHTML = '<i class="fas fa-eye-slash"></i> 隐藏';
+                    }
+                } else {
+                    alert('操作失败：' + (data.message || '未知错误'));
+                }
+            })
+            .catch(err => {
+                console.error('Error toggling visibility:', err);
+                alert('操作失败，请检查网络');
+            });
+    }
+</script>
+
+</body>
+</html>

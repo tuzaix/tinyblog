@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>编辑文章 - <%= settings.site_name %></title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/simplemde@1.11.2/dist/simplemde.min.css">
+    <link rel="stylesheet" href="/css/admin.css">
+    <script src="https://cdn.jsdelivr.net/npm/simplemde@1.11.2/dist/simplemde.min.js"></script>
+    <style>
+        body { overflow: auto; height: auto; } /* Override admin.css lock */
+        .editor-container { max-width: 1000px; margin: 40px auto; background: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+    </style>
+</head>
+<body>
+    <div class="editor-container">
+        <form action="/admin/article/save" method="POST">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 20px; margin-bottom: 30px;">
+                <h2 style="margin: 0; border: none; padding: 0;"><%= article.id ? '编辑文章' : '新建文章' %></h2>
+                <div class="actions">
+                    <a href="/admin" class="btn btn-secondary" style="margin-right: 10px;">取消</a>
+                    <button type="submit" class="btn btn-success">保存文章</button>
+                </div>
+            </div>
+            
+            <input type="hidden" name="id" value="<%= article.id || '' %>">
+            
+            <div class="form-group">
+                <label>文章标题</label>
+                <input type="text" name="title" value="<%= article.title || '' %>" required placeholder="请输入文章标题">
+            </div>
+            
+            <div class="form-group">
+                <label>摘要 (公开可见)</label>
+                <textarea name="summary" rows="3" required placeholder="请输入简短摘要，访客无需付费即可看到"><%= article.summary || '' %></textarea>
+            </div>
+            
+            <div class="form-group" style="display: flex; align-items: center; gap: 10px; margin-bottom: 20px;">
+                <input type="checkbox" name="hidden" id="hidden" <%= article.hidden ? 'checked' : '' %> style="width: auto; margin: 0;">
+                <label for="hidden" style="margin: 0; cursor: pointer;">隐藏文章 (不在前端首页展示)</label>
+            </div>
+            
+            <div class="form-group">
+                <label>正文内容 (付费解锁后可见)</label>
+                <textarea id="markdown-editor" name="content"><%= content || '' %></textarea>
+            </div>
+            
+            <div class="actions" style="text-align: right; margin-top: 20px;">
+                <a href="/admin" class="btn btn-secondary" style="margin-right: 10px;">取消</a>
+                <button type="submit" class="btn btn-success">保存文章</button>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        var simplemde = new SimpleMDE({ 
+            element: document.getElementById("markdown-editor"),
+            placeholder: "在这里输入正文内容..."
+        });
+    </script>
+</body>
+</html>

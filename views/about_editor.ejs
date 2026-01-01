@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>编辑关于页面 - <%= settings.site_name %></title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/simplemde@1.11.2/dist/simplemde.min.css">
+    <link rel="stylesheet" href="/css/admin.css">
+    <script src="https://cdn.jsdelivr.net/npm/simplemde@1.11.2/dist/simplemde.min.js"></script>
+    <style>
+        body { overflow: auto; height: auto; } /* Override admin.css lock */
+        .editor-container { max-width: 1000px; margin: 40px auto; background: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+    </style>
+</head>
+<body>
+    <div class="editor-container">
+        <form action="/admin/about/save" method="POST">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 20px; margin-bottom: 30px;">
+                <h2 style="margin: 0; border: none; padding: 0;">编辑“关于”页面</h2>
+                <div class="actions">
+                    <a href="/admin" class="btn btn-secondary" style="margin-right: 10px;">取消</a>
+                    <button type="submit" class="btn btn-success">保存内容</button>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>页面内容 (Markdown)</label>
+                <textarea id="markdown-editor" name="content"><%= content || '' %></textarea>
+            </div>
+            
+            <div class="actions" style="text-align: right; margin-top: 20px;">
+                <a href="/admin" class="btn btn-secondary" style="margin-right: 10px;">取消</a>
+                <button type="submit" class="btn btn-success">保存内容</button>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        var simplemde = new SimpleMDE({ 
+            element: document.getElementById("markdown-editor"),
+            placeholder: "在这里输入内容...",
+            spellChecker: false
+        });
+    </script>
+</body>
+</html>

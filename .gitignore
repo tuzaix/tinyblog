@@ -1,0 +1,9 @@
+node_modules/
+.DS_Store
+*.log
+data/keys.json
+data/articles.json
+data/settings.json
+public/uploads/
+.env
+.vscode/
