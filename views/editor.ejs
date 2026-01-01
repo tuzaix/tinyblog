@@ -11,6 +11,20 @@
     <style>
         body { overflow: auto; height: auto; } /* Override admin.css lock */
         .editor-container { max-width: 1000px; margin: 40px auto; background: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+        
+        /* Editor Scroll Support */
+        .CodeMirror, .CodeMirror-scroll {
+            min-height: 500px;
+            max-height: 700px;
+        }
+        .editor-toolbar {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            background: white;
+            border-top-left-radius: 4px;
+            border-top-right-radius: 4px;
+        }
     </style>
 </head>
 <body>
