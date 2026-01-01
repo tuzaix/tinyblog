@@ -45,6 +45,24 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage: storage });
 
+// Configure Multer for Blog Image Uploads
+const blogStorage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        const dir = path.join(__dirname, 'public/uploads');
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+        cb(null, dir);
+    },
+    filename: function (req, file, cb) {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        const ext = path.extname(file.originalname) || '.png';
+        cb(null, 'img-' + uniqueSuffix + ext);
+    }
+});
+const uploadBlogImage = multer({ 
+    storage: blogStorage,
+    limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
+});
+
 // Middleware
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -515,6 +533,15 @@ app.post('/admin/keys/delete/:code', requireAuth, (req, res) => {
     writeJson(KEYS_FILE, keys);
     console.log(`Successfully deleted key: ${req.params.code}`);
     res.json({ success: true });
+});
+
+// --- IMAGE UPLOAD ---
+app.post('/admin/upload-image', requireAuth, uploadBlogImage.single('image'), (req, res) => {
+    if (!req.file) {
+        return res.json({ success: false, message: '没有检测到上传的文件' });
+    }
+    const imageUrl = '/uploads/' + req.file.filename;
+    res.json({ success: true, url: imageUrl });
 });
 
 // --- ARTICLE MANAGEMENT ---

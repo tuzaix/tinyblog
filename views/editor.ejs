@@ -56,8 +56,62 @@
     <script>
         var simplemde = new SimpleMDE({ 
             element: document.getElementById("markdown-editor"),
-            placeholder: "在这里输入正文内容..."
+            placeholder: "在这里输入正文内容...",
+            spellChecker: false,
+            autosave: {
+                enabled: true,
+                uniqueId: "article-editor-<%= article.id || 'new' %>",
+                delay: 1000,
+            },
+            status: ["autosave", "lines", "words", "cursor"],
         });
+
+        // Handle image paste
+        simplemde.codemirror.on("paste", function(cm, e) {
+            const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+            for (let i = 0; i < items.length; i++) {
+                if (items[i].type.indexOf("image") !== -1) {
+                    e.preventDefault();
+                    const file = items[i].getAsFile();
+                    uploadImage(file);
+                }
+            }
+        });
+
+        function uploadImage(file) {
+            const formData = new FormData();
+            formData.append('image', file);
+            
+            // Insert placeholder
+            const pos = simplemde.codemirror.getCursor();
+            const placeholder = "![正在上传图片...]()";
+            simplemde.codemirror.replaceRange(placeholder, pos);
+            
+            fetch('/admin/upload-image', {
+                method: 'POST',
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    const newText = `![图片](${data.url})`;
+                    const endPos = { line: pos.line, ch: pos.ch + placeholder.length };
+                    simplemde.codemirror.replaceRange(newText, pos, endPos);
+                } else {
+                    alert('图片上传失败: ' + (data.message || '未知错误'));
+                    // Remove placeholder on failure
+                    const endPos = { line: pos.line, ch: pos.ch + placeholder.length };
+                    simplemde.codemirror.replaceRange('', pos, endPos);
+                }
+            })
+            .catch(err => {
+                console.error('Error uploading image:', err);
+                alert('图片上传出错');
+                // Remove placeholder on error
+                const endPos = { line: pos.line, ch: pos.ch + placeholder.length };
+                simplemde.codemirror.replaceRange('', pos, endPos);
+            });
+        }
     </script>
 </body>
 </html>
