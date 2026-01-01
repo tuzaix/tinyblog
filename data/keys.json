@@ -1,0 +1,119 @@
+[
+  {
+    "code": "KMK6VGN6AGE",
+    "status": "unused",
+    "bound_article_id": null,
+    "create_time": "2026-01-01T14:45:07.271Z",
+    "activate_time": null,
+    "expire_time": null,
+    "duration_hours": -1
+  },
+  {
+    "code": "KMAAE4MGUP2",
+    "status": "unused",
+    "bound_article_id": null,
+    "create_time": "2026-01-01T14:45:07.271Z",
+    "activate_time": null,
+    "expire_time": null,
+    "duration_hours": -1
+  },
+  {
+    "code": "KM11F2JRLV6",
+    "status": "unused",
+    "bound_article_id": null,
+    "create_time": "2026-01-01T14:45:07.271Z",
+    "activate_time": null,
+    "expire_time": null,
+    "duration_hours": -1
+  },
+  {
+    "code": "KM91I7Y4OQW",
+    "status": "unused",
+    "bound_article_id": null,
+    "create_time": "2026-01-01T14:45:07.271Z",
+    "activate_time": null,
+    "expire_time": null,
+    "duration_hours": -1
+  },
+  {
+    "code": "KM0G5JQ7T46",
+    "status": "unused",
+    "bound_article_id": null,
+    "create_time": "2026-01-01T14:45:07.271Z",
+    "activate_time": null,
+    "expire_time": null,
+    "duration_hours": -1
+  },
+  {
+    "code": "KMZ0G47TL7N",
+    "status": "unused",
+    "bound_article_id": null,
+    "create_time": "2026-01-01T14:45:07.271Z",
+    "activate_time": null,
+    "expire_time": null,
+    "duration_hours": -1
+  },
+  {
+    "code": "KMEO8K9F6T3",
+    "status": "unused",
+    "bound_article_id": null,
+    "create_time": "2026-01-01T14:45:07.271Z",
+    "activate_time": null,
+    "expire_time": null,
+    "duration_hours": -1
+  },
+  {
+    "code": "KMHH4NE6W0S",
+    "status": "unused",
+    "bound_article_id": null,
+    "create_time": "2026-01-01T14:45:07.271Z",
+    "activate_time": null,
+    "expire_time": null,
+    "duration_hours": -1
+  },
+  {
+    "code": "KMK5V28COK6",
+    "status": "unused",
+    "bound_article_id": null,
+    "create_time": "2026-01-01T14:45:07.271Z",
+    "activate_time": null,
+    "expire_time": null,
+    "duration_hours": -1
+  },
+  {
+    "code": "KM38IDZS5J6",
+    "status": "unused",
+    "bound_article_id": null,
+    "create_time": "2026-01-01T14:45:07.271Z",
+    "activate_time": null,
+    "expire_time": null,
+    "duration_hours": -1
+  },
+  {
+    "code": "KMLSD4811AK",
+    "status": "active",
+    "bound_article_id": "post-20260101-194321",
+    "create_time": "2026-01-01T11:24:40.825Z",
+    "activate_time": "2026-01-01T13:09:04.747Z",
+    "expire_time": null,
+    "duration_hours": -1
+  },
+  {
+    "code": "KMCCQEJZGRQ",
+    "status": "unused",
+    "bound_article_id": null,
+    "create_time": "2026-01-01T11:24:40.825Z",
+    "activate_time": null,
+    "expire_time": null,
+    "duration_hours": -1
+  },
+  {
+    "code": "KMPRLF5XBMQ",
+    "status": "unused",
+    "bound_article_id": null,
+    "create_time": "2026-01-01T11:24:40.825Z",
+    "activate_time": null,
+    "expire_time": null,
+    "duration_hours": -1
+  }
+]

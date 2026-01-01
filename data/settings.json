@@ -1,0 +1,12 @@
+{
+  "popup_message": "请扫描下方微信二维码联系客服，获取访问卡密",
+  "admin_password": "admin",
+  "watermark_text": "my tinyblog",
+  "default_key_duration_hours": -1,
+  "popup_title": "解锁阅读全文",
+  "site_name": "tinyblog",
+  "wechat_qr_image": "/images/qr-placeholder.svg",
+  "default_theme": "light",
+  "enable_key_verification": true,
+  "two_fa_enabled": false
+}
