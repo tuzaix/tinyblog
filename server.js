@@ -214,7 +214,7 @@ app.post('/admin/about/save', requireAuth, (req, res) => {
 // Unlock API
 app.post('/api/unlock', (req, res) => {
     const { article_id, key } = req.body;
-    const keys = readJson(path.join(DATA_DIR, 'keys.json'));
+    const keys = readJson(KEYS_FILE);
     const keyData = keys.find(k => k.code === key);
     
     if (!keyData) {
@@ -236,7 +236,7 @@ app.post('/api/unlock', (req, res) => {
         // Check Expiration
         if (keyData.expire_time && new Date(keyData.expire_time) < now) {
             keyData.status = 'expired';
-            writeJson(path.join(DATA_DIR, 'keys.json'), keys);
+            writeJson(KEYS_FILE, keys);
             return res.json({ success: false, message: '卡密已过期' });
         }
     }
@@ -247,13 +247,13 @@ app.post('/api/unlock', (req, res) => {
         keyData.bound_article_id = article_id;
         keyData.activate_time = now.toISOString();
         
-        if (keyData.duration_hours === -1) {
-            keyData.expire_time = null;
-        } else {
-            const durationMs = (keyData.duration_hours || 24) * 60 * 60 * 1000;
-            keyData.expire_time = new Date(now.getTime() + durationMs).toISOString();
+        // Calculate expiration if duration is set
+        if (keyData.duration_hours > 0) {
+            const expireDate = new Date(now.getTime() + keyData.duration_hours * 60 * 60 * 1000);
+            keyData.expire_time = expireDate.toISOString();
         }
-        writeJson(path.join(DATA_DIR, 'keys.json'), keys);
+        
+        writeJson(KEYS_FILE, keys);
     }
     
     // Auth Success: Read Content
@@ -322,7 +322,7 @@ app.get('/logout', (req, res) => {
 app.get('/admin', requireAuth, (req, res) => {
     const settings = readJson(SETTINGS_FILE);
     const articles = readJson(ARTICLES_META_FILE);
-    const keys = readJson(path.join(DATA_DIR, 'keys.json'));
+    const keys = readJson(KEYS_FILE);
 
     // Sort Logic (Articles)
     const sort = req.query.sort || 'date_desc';
@@ -464,7 +464,7 @@ app.post('/admin/2fa/disable', requireAuth, (req, res) => {
 
 // Key Generation
 app.post('/admin/keys/generate', requireAuth, (req, res) => {
-    const keys = readJson(path.join(DATA_DIR, 'keys.json'));
+    const keys = readJson(KEYS_FILE);
     let duration = parseInt(req.body.duration);
     if (isNaN(duration)) duration = -1; // Default to infinite
     const count = parseInt(req.body.count) || 1;
@@ -482,25 +482,38 @@ app.post('/admin/keys/generate', requireAuth, (req, res) => {
         keys.unshift(newKey); // Add to top
     }
     
-    writeJson(path.join(DATA_DIR, 'keys.json'), keys);
+    writeJson(KEYS_FILE, keys);
     res.redirect('/admin?section=keys');
 });
 
 // Delete Key
-app.get('/admin/keys/delete/:code', requireAuth, (req, res) => {
+app.post('/admin/keys/delete/:code', requireAuth, (req, res) => {
+    const code = (req.params.code || '').trim();
+    console.log(`Attempting to delete key: ${code}`);
     let keys = readJson(KEYS_FILE);
-    const keyToDelete = keys.find(k => k.code === req.params.code);
+    const initialCount = keys.length;
+    
+    const keyToDelete = keys.find(k => k.code === code);
     
     if (!keyToDelete) {
+        console.warn(`Key not found: ${code}`);
         return res.json({ success: false, message: '卡密不存在' });
     }
     
     if (keyToDelete.status !== 'unused') {
+        console.warn(`Cannot delete used key: ${code} (status: ${keyToDelete.status})`);
         return res.json({ success: false, message: '已使用的卡密无法删除' });
     }
     
-    keys = keys.filter(k => k.code !== req.params.code);
+    keys = keys.filter(k => k.code !== code);
+    
+    if (keys.length === initialCount) {
+        console.error(`Filter failed to remove key: ${req.params.code}`);
+        return res.json({ success: false, message: '删除失败：内部错误' });
+    }
+
     writeJson(KEYS_FILE, keys);
+    console.log(`Successfully deleted key: ${req.params.code}`);
     res.json({ success: true });
 });
 

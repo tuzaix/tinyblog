@@ -533,7 +533,9 @@
     function deleteKey(code, btn) {
         if (!confirm('确定要删除此卡密吗？')) return;
 
-        fetch('/admin/keys/delete/' + code)
+        fetch('/admin/keys/delete/' + code, {
+            method: 'POST'
+        })
             .then(res => res.json())
             .then(data => {
                 if (data.success) {
