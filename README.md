@@ -21,7 +21,7 @@
 ### 2. 安装步骤
 ```bash
 # 克隆项目
-git clone https://github.com/yourusername/tinyblog.git
+git clone https://github.com/tuzaix/tinyblog.git
 cd tinyblog
 
 # 安装依赖
@@ -86,6 +86,16 @@ server {
 sudo ln -s /etc/nginx/sites-available/tinyblog /etc/nginx/sites-enabled/
 sudo nginx -t
 sudo systemctl restart nginx
+```
+
+### 3. 使用重启脚本 (可选)
+项目根目录下提供了一个 `restart-server.sh` 脚本，用于**拉取最新代码、安装依赖并重启服务**。
+```bash
+# 赋予执行权限
+chmod +x restart-server.sh
+
+# 运行重启脚本
+./restart-server.sh
 ```
 
 ## 📖 使用手册
