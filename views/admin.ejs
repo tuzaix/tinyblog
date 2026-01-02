@@ -96,6 +96,9 @@
                                     <td style="color: #999;"><%= index + 1 %></td>
                                     <td>
                                         <%= article.title %>
+                                        <% if (article.requiresKey !== false) { %>
+                                            <i class="fas fa-key" style="font-size: 0.8em; color: #f39c12; margin-left: 5px;" title="卡密保护"></i>
+                                        <% } %>
                                         <% if (article.hidden) { %>
                                             <span class="badge badge-warning" style="font-size: 0.7em; margin-left: 5px;">隐藏</span>
                                         <% } %>
@@ -135,6 +138,7 @@
                                     </a>
                                 </th>
                                 <th>状态</th>
+                                <th>卡密保护</th>
                                 <th>操作</th>
                             </tr>
                         </thead>
@@ -142,7 +146,14 @@
                             <% articles.forEach(function(article, index) { %>
                                 <tr id="article-row-<%= article.id %>">
                                     <td style="color: #999;"><%= (articlePagination.page - 1) * articlePagination.limit + index + 1 %></td>
-                                    <td><%= article.title %></td>
+                                    <td>
+                                        <%= article.title %>
+                                        <% if (article.requiresKey !== false) { %>
+                                            <i class="fas fa-key" id="key-icon-<%= article.id %>" style="font-size: 0.8em; color: #f39c12; margin-left: 5px;" title="卡密保护"></i>
+                                        <% } else { %>
+                                            <i class="fas fa-key" id="key-icon-<%= article.id %>" style="font-size: 0.8em; color: #f39c12; margin-left: 5px; display: none;" title="卡密保护"></i>
+                                        <% } %>
+                                    </td>
                                     <td><%= article.date %></td>
                                     <td style="color: #999; font-size: 0.85em;"><%= article.id %></td>
                                     <td><%= article.views || 0 %></td>
@@ -152,6 +163,16 @@
                                         <% } else { %>
                                             <span class="badge badge-success" id="status-<%= article.id %>"><i class="fas fa-eye"></i> 显示中</span>
                                         <% } %>
+                                    </td>
+                                    <td>
+                                        <div style="display: flex; justify-content: center; align-items: center;">
+                                            <input type="checkbox" 
+                                                   onclick="toggleArticleKeyRequirement('<%= article.id %>')" 
+                                                   <%= (article.requiresKey !== false) ? 'checked' : '' %>
+                                                   <%= (settings.enable_key_verification === false) ? 'disabled' : '' %>
+                                                   title="<%= (settings.enable_key_verification === false) ? '系统全局已关闭卡密验证' : '勾选开启卡密保护' %>"
+                                                   style="width: 18px; height: 18px; cursor: pointer;">
+                                        </div>
                                     </td>
                                     <td>
                                         <button onclick="toggleArticleVisibility('<%= article.id %>')" class="btn btn-sm btn-secondary" id="btn-toggle-<%= article.id %>">
@@ -551,6 +572,30 @@
             .catch(err => {
                 console.error(err);
                 alert('网络错误');
+            });
+    }
+
+    function toggleArticleKeyRequirement(articleId) {
+        fetch(`/admin/article/toggle-key-requirement/${articleId}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    const keyIcon = document.getElementById(`key-icon-${articleId}`);
+                    if (data.requiresKey) {
+                        keyIcon.style.display = 'inline-block';
+                    } else {
+                        keyIcon.style.display = 'none';
+                    }
+                } else {
+                    alert('操作失败：' + (data.message || '未知错误'));
+                    // Revert checkbox state on failure
+                    location.reload();
+                }
+            })
+            .catch(err => {
+                console.error('Error toggling key requirement:', err);
+                alert('操作失败，请检查网络');
+                location.reload();
             });
     }
 

@@ -50,9 +50,24 @@
                 <textarea name="summary" rows="3" required placeholder="请输入简短摘要，访客无需付费即可看到"><%= article.summary || '' %></textarea>
             </div>
             
-            <div class="form-group" style="display: flex; align-items: center; gap: 10px; margin-bottom: 20px;">
-                <input type="checkbox" name="hidden" id="hidden" <%= article.hidden ? 'checked' : '' %> style="width: auto; margin: 0;">
-                <label for="hidden" style="margin: 0; cursor: pointer;">隐藏文章 (不在前端首页展示)</label>
+            <div class="form-group" style="display: flex; flex-wrap: wrap; gap: 20px; margin-bottom: 20px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <input type="checkbox" name="hidden" id="hidden" <%= article.hidden ? 'checked' : '' %> style="width: auto; margin: 0;">
+                    <label for="hidden" style="margin: 0; cursor: pointer;">隐藏文章 (不在前端首页展示)</label>
+                </div>
+
+                <% if (settings.enable_key_verification !== false) { %>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <input type="checkbox" name="requiresKey" id="requiresKey" <%= (article.requiresKey !== false) ? 'checked' : '' %> style="width: auto; margin: 0;">
+                    <label for="requiresKey" style="margin: 0; cursor: pointer;">卡密保护 (需要卡密才能查看正文)</label>
+                </div>
+                <% } else { %>
+                    <input type="hidden" name="requiresKey" value="<%= article.requiresKey !== false ? 'on' : 'off' %>">
+                    <div style="display: flex; align-items: center; gap: 10px; opacity: 0.6;" title="系统全局设置中已关闭卡密验证">
+                        <input type="checkbox" disabled checked style="width: auto; margin: 0;">
+                        <label style="margin: 0;">卡密保护 (系统已全局关闭)</label>
+                    </div>
+                <% } %>
             </div>
             
             <div class="form-group">

@@ -176,15 +176,19 @@ app.get('/article/:id', (req, res) => {
     writeJson(ARTICLES_META_FILE, articles);
     
     // Check Lock Status
-    // Default to locked unless globally disabled or user has valid key
+    // Default to locked unless globally disabled, article-specific disabled, or user has valid key
     let isLocked = true;
     let htmlContent = '';
     
-    // If verification disabled globally
+    // 1. If verification disabled globally
     if (settings.enable_key_verification === false) {
         isLocked = false;
     } 
-    // Or if user already unlocked this article
+    // 2. If verification disabled for this specific article (default is true if undefined)
+    else if (article.requiresKey === false) {
+        isLocked = false;
+    }
+    // 3. Or if user already unlocked this article
     else if (req.headers.cookie && req.headers.cookie.includes(`unlocked_${article.id}=true`)) {
         isLocked = false;
     }
@@ -570,10 +574,11 @@ app.get('/admin/article/edit/:id', requireAuth, (req, res) => {
 
 // Save Article
 app.post('/admin/article/save', requireAuth, (req, res) => {
-    const { id, title, summary, content, hidden } = req.body;
+    const { id, title, summary, content, hidden, requiresKey } = req.body;
     let articles = readJson(ARTICLES_META_FILE);
     let articleId = id;
     const isHidden = hidden === 'on';
+    const isRequiresKey = requiresKey === 'on';
     
     if (!articleId) {
         // Create new
@@ -592,7 +597,8 @@ app.post('/admin/article/save', requireAuth, (req, res) => {
             title,
             summary,
             date: now.toISOString().split('T')[0],
-            hidden: isHidden
+            hidden: isHidden,
+            requiresKey: isRequiresKey
         };
         articles.unshift(newArticle);
     } else {
@@ -602,6 +608,7 @@ app.post('/admin/article/save', requireAuth, (req, res) => {
             articles[index].title = title;
             articles[index].summary = summary;
             articles[index].hidden = isHidden;
+            articles[index].requiresKey = isRequiresKey;
         }
     }
     
@@ -624,6 +631,22 @@ app.get('/admin/article/toggle-visibility/:id', requireAuth, (req, res) => {
         article.hidden = !article.hidden;
         writeJson(ARTICLES_META_FILE, articles);
         res.json({ success: true, hidden: article.hidden });
+    } else {
+        res.status(404).json({ success: false, message: '文章不存在' });
+    }
+});
+
+app.get('/admin/article/toggle-key-requirement/:id', requireAuth, (req, res) => {
+    const articleId = req.params.id;
+    let articles = readJson(ARTICLES_META_FILE);
+    const article = articles.find(a => a.id === articleId);
+    
+    if (article) {
+        // Toggle requiresKey, default to true if it's undefined
+        const currentStatus = article.requiresKey !== false;
+        article.requiresKey = !currentStatus;
+        writeJson(ARTICLES_META_FILE, articles);
+        res.json({ success: true, requiresKey: article.requiresKey });
     } else {
         res.status(404).json({ success: false, message: '文章不存在' });
     }
