@@ -102,6 +102,7 @@ const ARTICLES_META_FILE = path.join(DATA_DIR, 'articles', 'metadata.json');
 const CONTENT_DIR = path.join(DATA_DIR, 'content');
 const KEYS_FILE = path.join(DATA_DIR, 'keys.json');
 const ABOUT_FILE = path.join(DATA_DIR, 'about.md');
+const GUIDE_FILE = path.join(__dirname, 'USER_GUIDE.md');
 
 // Helper: Generate Random Key
 const generateKey = () => {
@@ -224,6 +225,17 @@ app.get('/admin/about', requireAuth, (req, res) => {
         content = fs.readFileSync(ABOUT_FILE, 'utf8');
     }
     res.render('about_editor', { settings, content });
+});
+
+// Admin - View Guide
+app.get('/admin/guide', requireAuth, (req, res) => {
+    const settings = readJson(SETTINGS_FILE);
+    let content = '';
+    if (fs.existsSync(GUIDE_FILE)) {
+        content = fs.readFileSync(GUIDE_FILE, 'utf8');
+    }
+    const htmlContent = md.render(content);
+    res.render('guide', { settings, content: htmlContent });
 });
 
 // Admin - Save About
