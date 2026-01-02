@@ -83,17 +83,28 @@
     </div>
 
     <script>
+        // Pass server-side variables to client-side
+        const articleId = "<%- article.id || '' %>";
+        const isEdit = !!articleId;
+
         var simplemde = new SimpleMDE({ 
             element: document.getElementById("markdown-editor"),
             placeholder: "在这里输入正文内容...",
             spellChecker: false,
             autosave: {
-                enabled: true,
-                uniqueId: "article-editor-<%= article.id || 'new' %>",
+                enabled: isEdit,
+                uniqueId: "article-editor-" + (articleId || 'new'),
                 delay: 1000,
             },
             status: ["autosave", "lines", "words", "cursor"],
         });
+
+        // If it's a new article, ensure the editor is empty regardless of autosave
+        if (!isEdit) {
+            if (simplemde.value() && !document.getElementById("markdown-editor").value) {
+                simplemde.value("");
+            }
+        }
 
         // Handle image paste
         simplemde.codemirror.on("paste", function(cm, e) {
