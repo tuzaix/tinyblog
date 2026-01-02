@@ -206,28 +206,45 @@
 
         function drawWatermark(text) {
             const canvas = document.getElementById('watermark-canvas');
-            if (!canvas) return;
+            if (!canvas || !text) return;
             const ctx = canvas.getContext('2d');
             
             const resize = () => {
                 canvas.width = window.innerWidth;
                 canvas.height = window.innerHeight;
-                ctx.font = '16px Microsoft YaHei';
+                
+                const fontSize = 16;
+                ctx.font = `${fontSize}px "Noto Sans SC", "Microsoft YaHei", sans-serif`;
+                
                 // Get color from CSS variable
                 const color = getComputedStyle(document.body).getPropertyValue('--watermark-color').trim();
                 ctx.fillStyle = color;
-                ctx.rotate(-20 * Math.PI / 180);
                 
-                const gapX = 230;
-                const gapY = 50;
+                // Calculate adaptive spacing based on text length
+                const textMetrics = ctx.measureText(text);
+                const textWidth = textMetrics.width;
                 
-                for (let x = -500; x < canvas.width + 500; x += gapX) {
-                    for (let y = -500; y < canvas.height + 500; y += gapY) {
+                // Further reduced multiplier for even tighter spacing
+                const gapX = Math.max(120, textWidth * 1.2); 
+                const gapY = 80; // Further reduced vertical gap
+                
+                ctx.save();
+                ctx.rotate(-25 * Math.PI / 180);
+                
+                // Start drawing from negative coordinates to cover full screen after rotation
+                for (let x = -canvas.width; x < canvas.width * 2; x += gapX) {
+                    for (let y = -canvas.height; y < canvas.height * 2; y += gapY) {
                         ctx.fillText(text, x, y);
                     }
                 }
+                ctx.restore();
             };
             
+            // Cleanup existing listener to prevent multiple triggers
+            if (window._watermarkResizeHandler) {
+                window.removeEventListener('resize', window._watermarkResizeHandler);
+            }
+            window._watermarkResizeHandler = resize;
             window.addEventListener('resize', resize);
             resize();
         }
