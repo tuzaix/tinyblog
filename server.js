@@ -534,7 +534,17 @@ app.post('/admin/keys/delete/:code', requireAuth, (req, res) => {
         return res.json({ success: false, message: '卡密不存在' });
     }
     
-    if (keyToDelete.status !== 'unused') {
+    // Check if bound article exists
+    let isArticleDeleted = false;
+    if (keyToDelete.bound_article_id) {
+        const articles = readJson(ARTICLES_META_FILE);
+        const article = articles.find(a => a.id === keyToDelete.bound_article_id);
+        if (!article) {
+            isArticleDeleted = true;
+        }
+    }
+    
+    if (keyToDelete.status !== 'unused' && !isArticleDeleted) {
         console.warn(`Cannot delete used key: ${code} (status: ${keyToDelete.status})`);
         return res.json({ success: false, message: '已使用的卡密无法删除' });
     }

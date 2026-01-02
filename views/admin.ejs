@@ -95,7 +95,10 @@
                                 <tr>
                                     <td style="color: #999;"><%= index + 1 %></td>
                                     <td>
-                                        <%= article.title %>
+                                        <a href="/article/<%= article.id %>" target="_blank" style="text-decoration: none; color: inherit; font-weight: 500;" title="预览文章">
+                                            <%= article.title %>
+                                            <i class="fas fa-external-link-alt" style="font-size: 0.75em; color: #999; margin-left: 4px;"></i>
+                                        </a>
                                         <% if (article.requiresKey !== false) { %>
                                             <i class="fas fa-key" style="font-size: 0.8em; color: #f39c12; margin-left: 5px;" title="卡密保护"></i>
                                         <% } %>
@@ -147,7 +150,10 @@
                                 <tr id="article-row-<%= article.id %>">
                                     <td style="color: #999;"><%= (articlePagination.page - 1) * articlePagination.limit + index + 1 %></td>
                                     <td>
-                                        <%= article.title %>
+                                        <a href="/article/<%= article.id %>" target="_blank" style="text-decoration: none; color: inherit; font-weight: 500;" title="预览文章">
+                                            <%= article.title %>
+                                            <i class="fas fa-external-link-alt" style="font-size: 0.75em; color: #999; margin-left: 4px;"></i>
+                                        </a>
                                         <% if (article.requiresKey !== false) { %>
                                             <i class="fas fa-key" id="key-icon-<%= article.id %>" style="font-size: 0.8em; color: #f39c12; margin-left: 5px;" title="卡密保护"></i>
                                         <% } else { %>
@@ -320,8 +326,13 @@
                                     <td><%= key.duration_hours === -1 ? '永久' : key.duration_hours + 'h' %></td>
                                     <td><%= new Date(key.create_time).toLocaleString() %></td>
                                     <td>
-                                        <% if (key.status === 'unused') { %>
-                                            <a href="javascript:void(0)" class="btn btn-sm btn-danger" onclick="deleteKey('<%= key.code %>', this)">
+                                        <% 
+                                            const boundArticle = key.bound_article_id ? allArticles.find(a => a.id === key.bound_article_id) : null;
+                                            const isArticleDeleted = key.bound_article_id && !boundArticle;
+                                            
+                                            if (key.status === 'unused' || isArticleDeleted) { 
+                                        %>
+                                            <a href="javascript:void(0)" class="btn btn-sm btn-danger" onclick="deleteKey('<%= key.code %>', this)" title="<%= isArticleDeleted ? '关联文章已删除，允许删除卡密' : '删除卡密' %>">
                                                 <i class="fas fa-trash"></i>
                                             </a>
                                         <% } else { %>
