@@ -135,7 +135,7 @@
             const watermarkCanvas = document.getElementById('watermark-canvas');
             const articleBody = document.getElementById('article-body');
             if (watermarkCanvas && articleBody && articleBody.style.display !== 'none') {
-                drawWatermark(watermarkText + (currentKey ? ' ' + currentKey : ''));
+                drawWatermark(watermarkText);
             }
         }
 
@@ -188,7 +188,7 @@
                     body.style.display = 'block';
                     
                     if (document.getElementById('watermark-canvas')) {
-                        drawWatermark(watermarkText + ' ' + key);
+                        drawWatermark(watermarkText);
                         startProtection();
                     }
                 } else {
