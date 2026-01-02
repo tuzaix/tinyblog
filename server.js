@@ -235,7 +235,7 @@ app.post('/admin/about/save', requireAuth, (req, res) => {
 
 // Unlock API
 app.post('/api/unlock', (req, res) => {
-    const { article_id, key } = req.body;
+    const { article_id, key, fingerprint } = req.body;
     const keys = readJson(KEYS_FILE);
     const keyData = keys.find(k => k.code === key);
     
@@ -250,32 +250,49 @@ app.post('/api/unlock', (req, res) => {
         return res.json({ success: false, message: '卡密已过期' });
     }
     
-    if (keyData.status === 'active') {
+    // Fingerprint and Activation Logic
+    const settings = readJson(SETTINGS_FILE);
+    const maxDevices = settings.max_devices_per_key || 2;
+    if (!keyData.fingerprints) keyData.fingerprints = [];
+
+    if (keyData.status === 'unused') {
+        // First time activation
+        keyData.status = 'active';
+        keyData.bound_article_id = article_id;
+        keyData.activate_time = now.toISOString();
+        if (fingerprint) keyData.fingerprints = [fingerprint]; // Record first device
+        
+        if (keyData.duration_hours !== -1) {
+            const expireTime = new Date(now.getTime() + keyData.duration_hours * 60 * 60 * 1000);
+            keyData.expire_time = expireTime.toISOString();
+        }
+        
+        writeJson(KEYS_FILE, keys);
+    } else if (keyData.status === 'active') {
         // Check Binding
         if (keyData.bound_article_id !== article_id) {
             return res.json({ success: false, message: '此卡密已绑定其他文章，请使用新卡密' });
         }
+        
+        // Check Fingerprint
+        if (fingerprint && !keyData.fingerprints.includes(fingerprint)) {
+            if (keyData.fingerprints.length < maxDevices) {
+                // Allow binding a new device within limit
+                keyData.fingerprints.push(fingerprint);
+                writeJson(KEYS_FILE, keys);
+                console.log(`Key ${key} bound to a new device. Total: ${keyData.fingerprints.length}`);
+            } else {
+                console.warn(`Device limit reached for key ${key}. Max: ${maxDevices}`);
+                return res.json({ success: false, message: '此卡密已绑定其他设备，请使用新卡密' });
+            }
+        }
+        
         // Check Expiration
         if (keyData.expire_time && new Date(keyData.expire_time) < now) {
             keyData.status = 'expired';
             writeJson(KEYS_FILE, keys);
             return res.json({ success: false, message: '卡密已过期' });
         }
-    }
-    
-    if (keyData.status === 'unused') {
-        // Activate
-        keyData.status = 'active';
-        keyData.bound_article_id = article_id;
-        keyData.activate_time = now.toISOString();
-        
-        // Calculate expiration if duration is set
-        if (keyData.duration_hours > 0) {
-            const expireDate = new Date(now.getTime() + keyData.duration_hours * 60 * 60 * 1000);
-            keyData.expire_time = expireDate.toISOString();
-        }
-        
-        writeJson(KEYS_FILE, keys);
     }
     
     // Auth Success: Read Content
@@ -447,6 +464,7 @@ app.post('/admin/settings', requireAuth, upload.single('qr_image'), (req, res) =
     settings.popup_title = req.body.popup_title;
     settings.watermark_text = req.body.watermark_text;
     settings.default_key_duration_hours = parseInt(req.body.default_key_duration_hours) || 24;
+    settings.max_devices_per_key = parseInt(req.body.max_devices_per_key) || 2;
     
     // Toggle
     settings.enable_key_verification = req.body.enable_key_verification === 'on';
