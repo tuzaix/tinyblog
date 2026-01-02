@@ -358,21 +358,33 @@ app.get('/admin', requireAuth, (req, res) => {
     });
 
     // Sort Logic (Keys)
-    const keySort = req.query.keySort || 'status_asc';
+    const keySort = req.query.keySort || 'status_desc';
     
     keys.sort((a, b) => {
-        if (keySort === 'status_asc') return a.status.localeCompare(b.status);
-        if (keySort === 'status_desc') return b.status.localeCompare(a.status);
+        let result = 0;
+        if (keySort === 'status_asc') result = a.status.localeCompare(b.status);
+        else if (keySort === 'status_desc') result = b.status.localeCompare(a.status);
         
-        // Treat -1 as Infinity for duration sorting
-        const getDuration = (d) => d === -1 ? Infinity : d;
-        if (keySort === 'duration_asc') return getDuration(a.duration_hours) - getDuration(b.duration_hours);
-        if (keySort === 'duration_desc') return getDuration(b.duration_hours) - getDuration(a.duration_hours);
+        // Secondary sort: Newest first if primary sort is same
+        if (result === 0) {
+            result = new Date(b.create_time || 0) - new Date(a.create_time || 0);
+        }
+
+        if (keySort.startsWith('status')) return result;
         
+        // Other sorts (duration, time)
+        if (keySort === 'duration_asc') {
+            const getDuration = (d) => d === -1 ? Infinity : d;
+            return getDuration(a.duration_hours) - getDuration(b.duration_hours);
+        }
+        if (keySort === 'duration_desc') {
+            const getDuration = (d) => d === -1 ? Infinity : d;
+            return getDuration(b.duration_hours) - getDuration(a.duration_hours);
+        }
         if (keySort === 'time_asc') return new Date(a.create_time || 0) - new Date(b.create_time || 0);
         if (keySort === 'time_desc') return new Date(b.create_time || 0) - new Date(a.create_time || 0);
         
-        return 0;
+        return result;
     });
 
     const activeSection = req.query.section || (req.query.sort || req.query.articlePage ? 'articles' : (req.query.keySort ? 'keys' : 'dashboard'));

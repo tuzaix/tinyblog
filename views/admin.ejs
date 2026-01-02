@@ -263,8 +263,9 @@
                             <tr>
                                 <th style="width: 50px;">#</th>
                                 <th>卡密代码</th>
+                                <th>绑定文章</th>
                                 <th>
-                                    <a href="/admin?keySort=<%= currentKeySort === 'status_asc' ? 'status_desc' : 'status_asc' %>&section=keys" class="sort-header" style="color: #666; text-decoration: none; display: flex; align-items: center; gap: 5px;">
+                                    <a href="/admin?keySort=<%= currentKeySort === 'status_desc' ? 'status_asc' : 'status_desc' %>&section=keys" class="sort-header" style="color: #666; text-decoration: none; display: flex; align-items: center; gap: 5px;">
                                         状态
                                         <i class="fas <%= currentKeySort === 'status_asc' ? 'fa-sort-up' : (currentKeySort === 'status_desc' ? 'fa-sort-down' : 'fa-sort') %>"></i>
                                     </a>
@@ -293,6 +294,23 @@
                                         <button class="btn-icon" onclick="copyToClipboard('<%= key.code %>', this)" title="复制">
                                             <i class="fas fa-copy"></i>
                                         </button>
+                                    </td>
+                                    <td>
+                                        <% if (key.bound_article_id) { 
+                                            const boundArticle = allArticles.find(a => a.id === key.bound_article_id);
+                                            if (boundArticle) { %>
+                                                <a href="/article/<%= boundArticle.id %>" 
+                                                   target="_blank" 
+                                                   onclick="copyToClipboard('<%= key.code %>', this); return true;"
+                                                   style="color: #3498db; text-decoration: none; display: flex; align-items: center; gap: 5px; font-size: 0.9em; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"
+                                                   title="点击跳转并复制卡密: <%= boundArticle.title %>">
+                                                    <i class="fas fa-external-link-alt" style="font-size: 0.8em;"></i>
+                                                    <%= boundArticle.title %>
+                                                </a>
+                                            <% } else { %>
+                                                <span style="color: #999; font-size: 0.85em;">文章已删除</span>
+                                            <% }
+                                        } %>
                                     </td>
                                     <td>
                                         <span class="status-badge status-<%= key.status %>">
