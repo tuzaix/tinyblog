@@ -11,7 +11,7 @@
     --shadow-sm: 0 2px 4px rgba(0,0,0,0.05);
     --shadow-md: 0 8px 16px rgba(0,0,0,0.08);
     --header-height: 64px;
-    --watermark-color: rgba(200, 200, 200, 0.3);
+    --watermark-color: rgba(180, 180, 180, 0.45);
     --modal-overlay: rgba(44, 62, 80, 0.6);
 }
 
@@ -25,7 +25,7 @@
     --border-color: #333;
     --shadow-sm: 0 2px 4px rgba(0,0,0,0.3);
     --shadow-md: 0 8px 16px rgba(0,0,0,0.5);
-    --watermark-color: rgba(100, 100, 100, 0.15);
+    --watermark-color: rgba(150, 150, 150, 0.25);
     --modal-overlay: rgba(0, 0, 0, 0.8);
 }
 
@@ -39,7 +39,7 @@
     --border-color: #eaddcf;
     --shadow-sm: 0 2px 4px rgba(91, 70, 54, 0.1);
     --shadow-md: 0 8px 16px rgba(91, 70, 54, 0.2);
-    --watermark-color: rgba(91, 70, 54, 0.08);
+    --watermark-color: rgba(91, 70, 54, 0.15);
     --modal-overlay: rgba(91, 70, 54, 0.4);
 }
 
