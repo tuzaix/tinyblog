@@ -315,6 +315,21 @@ h1, h2, h3, h4, h5, h6 { margin-top: 0; font-weight: 600; line-height: 1.3; }
     background: var(--bg-card);
     flex-shrink: 0;
 }
+.footer-links {
+    margin-bottom: 15px;
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+.footer-links a {
+    color: var(--text-secondary);
+    text-decoration: none;
+    transition: color 0.3s;
+}
+.footer-links a:hover {
+    color: var(--primary-color);
+}
 
 /* Modal */
 .modal-overlay {

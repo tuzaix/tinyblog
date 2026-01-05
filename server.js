@@ -103,6 +103,7 @@ const CONTENT_DIR = path.join(DATA_DIR, 'content');
 const KEYS_FILE = path.join(DATA_DIR, 'keys.json');
 const ABOUT_FILE = path.join(DATA_DIR, 'about.md');
 const GUIDE_FILE = path.join(__dirname, 'USER_GUIDE.md');
+const PRIVACY_FILE = path.join(DATA_DIR, 'privacy.md');
 
 // Helper: Generate Random Key
 const generateKey = () => {
@@ -214,7 +215,20 @@ app.get('/about', (req, res) => {
         content = fs.readFileSync(ABOUT_FILE, 'utf8');
     }
     const htmlContent = md.render(content);
-    res.render('about', { settings, content: htmlContent });
+    res.render('about', { settings, content: htmlContent, title: '关于我们' });
+});
+
+// Privacy Policy Page
+app.get('/privacy', (req, res) => {
+    const settings = readJson(SETTINGS_FILE);
+    let content = '';
+    if (fs.existsSync(PRIVACY_FILE)) {
+        content = fs.readFileSync(PRIVACY_FILE, 'utf8');
+    } else {
+        content = '# 隐私政策\n\n本站非常重视您的隐私。目前本站仅记录基本的浏览器指纹用于卡密验证，不收集任何个人敏感信息。';
+    }
+    const htmlContent = md.render(content);
+    res.render('about', { settings, content: htmlContent, title: '隐私政策' });
 });
 
 // Admin - Edit About
