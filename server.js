@@ -60,12 +60,12 @@ const blogStorage = multer.diskStorage({
 });
 const uploadBlogImage = multer({ 
     storage: blogStorage,
-    limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
+    limits: { fileSize: 50 * 1024 * 1024 } // Increased to 50MB
 });
 
 // Middleware
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
+app.use(bodyParser.json({ limit: '50mb' }));
+app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
 app.use(express.static('public'));
 app.set('view engine', 'ejs');
 app.use(session({
@@ -606,12 +606,26 @@ app.post('/admin/keys/delete/:code', requireAuth, (req, res) => {
 });
 
 // --- IMAGE UPLOAD ---
-app.post('/admin/upload-image', requireAuth, uploadBlogImage.single('image'), (req, res) => {
-    if (!req.file) {
-        return res.json({ success: false, message: '没有检测到上传的文件' });
-    }
-    const imageUrl = '/uploads/' + req.file.filename;
-    res.json({ success: true, url: imageUrl });
+app.post('/admin/upload-image', requireAuth, (req, res) => {
+    uploadBlogImage.single('image')(req, res, function (err) {
+        if (err instanceof multer.MulterError) {
+            // A Multer error occurred when uploading.
+            if (err.code === 'LIMIT_FILE_SIZE') {
+                return res.json({ success: false, message: '图片大小超过限制（最大 50MB）' });
+            }
+            return res.json({ success: false, message: '上传错误: ' + err.message });
+        } else if (err) {
+            // An unknown error occurred when uploading.
+            return res.json({ success: false, message: '上传失败: ' + err.message });
+        }
+
+        // Everything went fine.
+        if (!req.file) {
+            return res.json({ success: false, message: '没有检测到上传的文件' });
+        }
+        const imageUrl = '/uploads/' + req.file.filename;
+        res.json({ success: true, url: imageUrl });
+    });
 });
 
 // --- ARTICLE MANAGEMENT ---

@@ -119,6 +119,13 @@
         });
 
         function uploadImage(file) {
+            // Check file size before uploading (50MB)
+            const maxSize = 50 * 1024 * 1024;
+            if (file.size > maxSize) {
+                alert('图片太大，不能超过 50MB');
+                return;
+            }
+
             const formData = new FormData();
             formData.append('image', file);
             
